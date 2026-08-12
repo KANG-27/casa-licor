@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  createdAt     DateTime  @default(now())
+
+  subscription  Subscription?
+  orders        Order[]
+  progress      UserProgress[]
+}
+
+model Subscription {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id])
+  status        SubscriptionStatus @default(ACTIVE)
+  startedAt     DateTime  @default(now())
+  renewsAt      DateTime
+  cancelledAt   DateTime?
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+model Season {
+  id            String    @id @default(cuid())
+  name          String
+  startDate     DateTime
+  endDate       DateTime
+  tiers         Tier[]
+  userProgress  UserProgress[]
+}
+
+model Tier {
+  id            String    @id @default(cuid())
+  seasonId      String
+  season        Season    @relation(fields: [seasonId], references: [id])
+  level         Int
+  xpRequired    Int
+  discountPct   Int
+  name          String?
+
+  @@unique([seasonId, level])
+}
+
+model UserProgress {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  seasonId      String
+  season        Season    @relation(fields: [seasonId], references: [id])
+  currentXp     Int       @default(0)
+  currentLevel  Int       @default(0)
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, seasonId])
+}
+
+model Kit {
+  id            String    @id @default(cuid())
+  name          String
+  description   String
+  basePrice     Int
+  xpReward      Int
+  imageUrl      String?
+  active        Boolean   @default(true)
+
+  orderItems    OrderItem[]
+}
+
+model Order {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  status        OrderStatus @default(PENDING)
+  totalAmount   Int
+  discountPct   Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  items         OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model OrderItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id])
+  kitId         String
+  kit           Kit       @relation(fields: [kitId], references: [id])
+  quantity      Int       @default(1)
+  unitPrice     Int
+}
